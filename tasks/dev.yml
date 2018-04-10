@@ -1,0 +1,11 @@
+---
+- hosts: localhost
+
+  tasks:
+    - name: Install spacemacs
+      git: repo=https://github.com/syl20bnr/spacemacs.git dest=~/.emacs.d
+      args:
+        update: no
+
+    - name: Import spacemacs settings
+      git: repo=git@github.com:eugsun/spacemacs.d.git dest=~/.spacemacs.d

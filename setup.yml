@@ -1,0 +1,4 @@
+---
+- import_playbook: tasks/osx.yml
+- import_playbook: tasks/terminal.yml
+- import_playbook: tasks/dev.yml

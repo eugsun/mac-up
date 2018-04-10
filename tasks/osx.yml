@@ -1,0 +1,96 @@
+---
+- hosts: localhost
+  vars:
+    applications:
+      - emacs
+      - java
+      - iterm2
+      - slack
+      - firefox
+      - google-chrome
+      - spectacle
+      - spotify
+
+    dockitems_to_remove:
+      - Launchpad
+      - Safari
+      - Mail
+      - Contacts
+      - Notes
+      - Reminders
+      - Maps
+      - Pages
+      - Photos
+      - FaceTime
+      - iBooks
+      - App Store
+      - System Preferences
+      - Calendar
+      - Messages
+      - iTunes
+      - Terminal
+      - Siri
+
+    dockitems_to_persist:
+      - name: Firefox
+        path: /Applications/Firefox.app
+
+      - name: Google Chrome
+        path: /Applications/Google Chrome.app
+
+      - name: iTerm
+        path: /Applications/iTerm.app
+
+      - name: Slack
+        path: /Applications/Slack.app
+
+      - name: Emacs
+        path: /Applications/Emacs.app
+
+  tasks:
+    - name: Install brew apps
+      homebrew: name={{ item }} state=present
+      with_items:
+        - cask
+        - git
+        - tmux
+        - dockutil
+        - pyenv
+        - nvm
+ 
+    - name: Check for installed cask apps
+      shell: brew cask list | grep {{ item }}
+      register: installed_applications
+      with_items: "{{ applications }}"
+      ignore_errors: true
+
+    - name: Install cask apps
+      shell: brew cask install {{ item }}
+      with_items: "{{ applications }}"
+      when: item not in installed_applications.results|map(attribute='stdout')
+
+    - name: Current Dock names
+      shell: >
+        dockutil --list |
+        python -c 'import sys; [sys.stdout.write(line.split("\t")[0] + "\n")
+        for line in sys.stdin]'
+      register: dockitems
+      changed_when: false
+
+    - set_fact:
+        x: '{{ dockitems_to_remove | intersect(dockitems.stdout_lines) }}'
+
+    - name: Remove Dock items
+      shell: dockutil --remove '{{ item }}'
+      with_items: '{{ x }}'
+
+    - set_fact: y='{{ dockitems_to_persist|map(attribute="name")|list }}'
+    - set_fact:
+        x: '{{ y | difference(dockitems.stdout_lines) }}'
+
+    - name: Add Dock items
+      shell: >
+        dockutil --find '{{ item.name }}' ||
+        dockutil --add '{{ item.path }}'
+      with_items: '{{ dockitems_to_persist }}'
+      when: '{{ x != [] }}'
